@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Chat Animator</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111111;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ---------- upload / review screens ---------- */
+  .panel {
+    width: 640px;
+    max-width: 90%;
+    padding: 40px 10px;
+  }
+  .panel h1 {
+    font-size: 22px;
+    margin: 0 0 6px;
+  }
+  .panel p.sub {
+    color: #666;
+    font-size: 14px;
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
+  .dropzone {
+    display: block;
+    margin-top: 24px;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .dropzone:hover, .dropzone.drag {
+    border-color: #111;
+    color: #111;
+  }
+  .dropzone input { display: none; }
+  .status {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #666;
+    min-height: 18px;
+  }
+  .divider {
+    display: flex;
+    align-items: center;
+    margin: 26px 0 18px;
+    color: #aaa;
+    font-size: 12px;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e5e5;
+  }
+  .divider span {
+    padding: 0 12px;
+  }
+  #pasteBox {
+    width: 100%;
+    height: 140px;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    resize: vertical;
+  }
+  textarea#reviewBox {
+    width: 100%;
+    height: 300px;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    resize: vertical;
+  }
+  .btn {
+    display: inline-block;
+    margin-top: 14px;
+    margin-right: 10px;
+    padding: 10px 20px;
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .btn.secondary {
+    background: #fff;
+    color: #111;
+    border: 1px solid #ccc;
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .count {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .record-row {
+    margin-top: 26px;
+    padding-top: 18px;
+    border-top: 1px solid #eee;
+  }
+  .record-row label {
+    font-size: 13px;
+    color: #444;
+  }
+  .record-row input[type=number] {
+    width: 54px;
+    padding: 4px 6px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin: 0 4px;
+  }
+  .record-note {
+    font-size: 12px;
+    color: #999;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  /* ---------- playback screen ---------- */
+  .stage-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #canvas {
+    width: 900px;
+    max-width: 88vw;
+    height: auto;
+    display: block;
+  }
+  .exit-link {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    font-size: 12px;
+    color: #999;
+    text-decoration: none;
+    cursor: pointer;
+    z-index: 5;
+  }
+  .exit-link:hover { color: #111; }
+
+  .rec-badge {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    font-size: 12px;
+    color: #c0392b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rec-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #c0392b;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+
+  .download-link {
+    font-size: 18px;
+  }
+  .download-link a {
+    color: #111;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  .hidden { display: none !important; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<!-- Screen 1: upload -->
+<div class="panel" id="screen-upload">
+  <h1>Chat Animator</h1>
+  <p class="sub">Upload a PDF export of a text-message conversation (like an iMessage export), or paste the chat text directly. Either way, you'll get a chance to review the extracted messages before playing them back one at a time as a typing animation — with an option to download the result as a video.</p>
+  <label class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept="application/pdf">
+    <span id="dropzoneLabel">Click to choose a PDF, or drag one here</span>
+  </label>
+  <div class="status" id="status"></div>
+
+  <div class="divider"><span>or</span></div>
+
+  <textarea id="pasteBox" placeholder="Paste chat text here — one message per line works best"></textarea>
+  <button class="btn" id="pasteBtn">Use this text</button>
+</div>
+
+<!-- Screen 2: review extracted messages -->
+<a class="exit-link hidden" id="reviewStartOverLink">&larr; start over</a>
+<div class="panel hidden" id="screen-review">
+  <h1>Review the extracted messages</h1>
+  <p class="sub">One message per line. The extraction does its best to drop timestamps, "Delivered"/"Edited" labels, link previews, and reply counts — but PDFs vary, so skim through and delete or fix anything that slipped in before playing.</p>
+  <textarea id="reviewBox"></textarea>
+  <div class="count" id="lineCount"></div>
+  <button class="btn" id="playBtn">Play animation</button>
+  <button class="btn secondary" id="backBtn">Choose a different PDF</button>
+
+  <div class="record-row">
+    <label>
+      Download a video of the first
+      <input type="number" id="recordCount" value="12" min="1" max="200">
+      messages
+    </label>
+    <button class="btn" id="downloadBtn">Download video</button>
+    <div class="record-note" id="recordNote"></div>
+  </div>
+</div>
+
+<!-- Screen 3: playback -->
+<a class="exit-link hidden" id="exitLink">&larr; back</a>
+<div class="rec-badge hidden" id="recBadge"><span class="dot"></span> recording</div>
+<div class="stage-wrap hidden" id="stageWrap">
+  <canvas id="canvas" width="1280" height="720"></canvas>
+  <div class="download-link hidden" id="downloadReady"></div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const screenUpload = document.getElementById('screen-upload');
+const screenReview = document.getElementById('screen-review');
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const statusEl = document.getElementById('status');
+const pasteBox = document.getElementById('pasteBox');
+const pasteBtn = document.getElementById('pasteBtn');
+const reviewStartOverLink = document.getElementById('reviewStartOverLink');
+const reviewBox = document.getElementById('reviewBox');
+const lineCountEl = document.getElementById('lineCount');
+const playBtn = document.getElementById('playBtn');
+const backBtn = document.getElementById('backBtn');
+const recordCountInput = document.getElementById('recordCount');
+const downloadBtn = document.getElementById('downloadBtn');
+const recordNote = document.getElementById('recordNote');
+
+const stageWrap = document.getElementById('stageWrap');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const exitLink = document.getElementById('exitLink');
+const recBadge = document.getElementById('recBadge');
+const downloadReady = document.getElementById('downloadReady');
+
+// ---------- PDF text extraction ----------
+
+function groupItemsIntoLines(items) {
+  const rows = {};
+  items.forEach(item => {
+    const y = Math.round(item.transform[5]);
+    if (!rows[y]) rows[y] = [];
+    rows[y].push(item);
+  });
+  const ys = Object.keys(rows).map(Number).sort((a, b) => b - a);
+  const lines = [];
+  ys.forEach(y => {
+    const rowItems = rows[y].slice().sort((a, b) => a.transform[4] - b.transform[4]);
+    const text = rowItems.map(i => i.str).join('').replace(/\s+/g, ' ').trim();
+    if (text) lines.push(text);
+  });
+  return lines;
+}
+
+async function extractLinesFromPDF(file) {
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  let allLines = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    allLines = allLines.concat(groupItemsIntoLines(content.items));
+  }
+  return allLines;
+}
+
+function isJunkLine(line) {
+  const t = line.trim();
+  if (!t) return true;
+  if (/^imessage$/i.test(t)) return true;
+  if (/^encrypted$/i.test(t)) return true;
+  if (/^\d+\s+repl(y|ies)$/i.test(t)) return true;
+  if (/^(delivered|read|edited)$/i.test(t)) return true;
+  if (/^([A-Za-z]+,?\s*)?([A-Za-z]{3,9}\s+\d{1,2}\s+)?(at\s+)?\d{1,2}:\d{2}\s*(AM|PM)$/i.test(t)) return true;
+  if (/^[a-z0-9.-]+\.(com|org|net|co|io)$/i.test(t)) return true;
+  return false;
+}
+
+function extractMessages(rawLines) {
+  return rawLines.filter(l => !isJunkLine(l));
+}
+
+// ---------- screen 1: upload ----------
+
+function handleFile(file) {
+  if (!file || file.type !== 'application/pdf') {
+    statusEl.textContent = 'Please choose a PDF file.';
+    return;
+  }
+  statusEl.textContent = 'Reading ' + file.name + ' …';
+  extractLinesFromPDF(file).then(rawLines => {
+    const messages = extractMessages(rawLines);
+    reviewBox.value = messages.join('\n');
+    updateLineCount();
+    screenUpload.classList.add('hidden');
+    screenReview.classList.remove('hidden');
+    reviewStartOverLink.classList.remove('hidden');
+  }).catch(err => {
+    console.error(err);
+    statusEl.textContent = 'Could not read that PDF — try a different file.';
+  });
+}
+
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+['dragover', 'dragenter'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); })
+);
+['dragleave', 'drop'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); })
+);
+dropzone.addEventListener('drop', e => {
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+pasteBtn.addEventListener('click', () => {
+  const raw = pasteBox.value.split('\n');
+  const messages = extractMessages(raw);
+  if (messages.length === 0) {
+    statusEl.textContent = 'Paste some chat text first.';
+    return;
+  }
+  reviewBox.value = messages.join('\n');
+  updateLineCount();
+  screenUpload.classList.add('hidden');
+  screenReview.classList.remove('hidden');
+  reviewStartOverLink.classList.remove('hidden');
+});
+
+// ---------- screen 2: review ----------
+
+function updateLineCount() {
+  const n = reviewBox.value.split('\n').map(l => l.trim()).filter(Boolean).length;
+  lineCountEl.textContent = n + (n === 1 ? ' message' : ' messages');
+}
+reviewBox.addEventListener('input', updateLineCount);
+
+backBtn.addEventListener('click', () => {
+  screenReview.classList.add('hidden');
+  reviewStartOverLink.classList.add('hidden');
+  screenUpload.classList.remove('hidden');
+  statusEl.textContent = '';
+  fileInput.value = '';
+  pasteBox.value = '';
+});
+
+reviewStartOverLink.addEventListener('click', () => {
+  screenReview.classList.add('hidden');
+  reviewStartOverLink.classList.add('hidden');
+  screenUpload.classList.remove('hidden');
+  statusEl.textContent = '';
+  fileInput.value = '';
+  pasteBox.value = '';
+});
+
+(function showRecordSupport() {
+  const mt = pickMimeType();
+  if (!mt) {
+    recordNote.textContent = 'Your browser doesn\u2019t support in-browser video recording — try Chrome, Firefox, or Safari.';
+  } else if (mt.indexOf('mp4') !== -1) {
+    recordNote.textContent = 'Will download as an actual .mp4 file.';
+  } else {
+    recordNote.textContent = 'Will download as a .webm file (your browser can\u2019t produce .mp4/.mov directly) — it plays in most video apps, and converts to .mp4 with any free converter.';
+  }
+})();
+
+// ---------- shared render state + canvas drawing ----------
+
+const state = { mode: 'blank', text: '' }; // mode: 'blank' | 'typing' | 'text'
+let rafId = null;
+
+function wrapText(context, text, maxWidth) {
+  const words = text.split(' ');
+  let lines = [];
+  let current = '';
+  for (const w of words) {
+    const test = current ? current + ' ' + w : w;
+    if (context.measureText(test).width > maxWidth && current) {
+      lines.push(current);
+      current = w;
+    } else {
+      current = test;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function render(timeMs) {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  if (state.mode === 'typing') {
+    const cx = W / 2, cy = H / 2;
+    const spacing = 22;
+    for (let i = 0; i < 3; i++) {
+      const phase = ((timeMs / 1200) - i * 0.15) % 1;
+      const bounce = Math.max(0, Math.sin(phase * Math.PI));
+      const yOff = -bounce * 10;
+      const alpha = 0.35 + bounce * 0.65;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(153,153,153,' + alpha.toFixed(2) + ')';
+      ctx.arc(cx + (i - 1) * spacing, cy + yOff, 9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (state.mode === 'text') {
+    const cx = W / 2, cy = H / 2;
+    const maxWidth = W * 0.72;
+    const fontSize = 40;
+    const lineHeight = fontSize * 1.5;
+    ctx.font = fontSize + 'px Arial, Helvetica, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#111111';
+
+    const lines = wrapText(ctx, state.text, maxWidth);
+    const totalHeight = Math.max(lines.length, 1) * lineHeight;
+    const startY = cy - totalHeight / 2 + lineHeight / 2;
+    lines.forEach((line, i) => ctx.fillText(line, cx, startY + i * lineHeight));
+
+    if (state.showCursor) {
+      const lastLine = lines.length ? lines[lines.length - 1] : '';
+      const lastWidth = ctx.measureText(lastLine).width;
+      const cursorX = cx + lastWidth / 2 + 4;
+      const cursorY = startY + (Math.max(lines.length, 1) - 1) * lineHeight;
+      const blinkOn = Math.floor(timeMs / 450) % 2 === 0;
+      if (blinkOn) {
+        ctx.fillRect(cursorX, cursorY - fontSize * 0.55, 3, fontSize * 1.1);
+      }
+    }
+  }
+
+  rafId = requestAnimationFrame(render);
+}
+
+function startRenderLoop() {
+  if (rafId === null) rafId = requestAnimationFrame(render);
+}
+function stopRenderLoop() {
+  if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+}
+
+// ---------- sequencing (drives `state`, shared by live playback and recording) ----------
+
+function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+async function typeLine(line) {
+  state.mode = 'text';
+  state.text = '';
+  state.showCursor = true;
+  const minCharDelay = 90;
+  for (let i = 1; i <= line.length; i++) {
+    state.text = line.substring(0, i);
+    await sleep(minCharDelay + Math.random() * 40);
+  }
+}
+
+async function playOneMessage(line) {
+  const wordCount = line.trim().split(/\s+/).filter(Boolean).length;
+
+  if (Math.random() < 0.5) {
+    state.mode = 'typing';
+    await sleep(700 + wordCount * 220 + Math.random() * 700);
+  } else {
+    state.mode = 'blank';
+    await sleep(300 + Math.random() * 400);
+  }
+
+  await typeLine(line);
+  state.showCursor = false;
+
+  await sleep(700 + wordCount * 130 + Math.random() * 400);
+  state.mode = 'blank';
+  await sleep(250);
+}
+
+let playbackToken = 0;
+
+async function runLive(lines, myToken) {
+  while (playbackToken === myToken) {
+    for (const line of lines) {
+      if (playbackToken !== myToken) return;
+      await playOneMessage(line);
+    }
+  }
+}
+
+async function runFixedCount(lines, count) {
+  const n = Math.min(count, lines.length);
+  for (let i = 0; i < n; i++) {
+    await playOneMessage(lines[i]);
+  }
+  state.mode = 'blank';
+}
+
+// ---------- live playback ----------
+
+playBtn.addEventListener('click', () => {
+  const lines = reviewBox.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+  screenReview.classList.add('hidden');
+  reviewStartOverLink.classList.add('hidden');
+  stageWrap.classList.remove('hidden');
+  canvas.classList.remove('hidden');
+  exitLink.classList.remove('hidden');
+  downloadReady.classList.add('hidden');
+  state.mode = 'blank';
+  startRenderLoop();
+  playbackToken++;
+  runLive(lines, playbackToken);
+});
+
+exitLink.addEventListener('click', () => {
+  playbackToken++; // stops any running live loop
+  stopRenderLoop();
+  stageWrap.classList.add('hidden');
+  exitLink.classList.add('hidden');
+  recBadge.classList.add('hidden');
+  screenUpload.classList.remove('hidden');
+  statusEl.textContent = '';
+  fileInput.value = '';
+});
+
+// ---------- video recording ----------
+
+function pickMimeType() {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const candidates = [
+    'video/mp4;codecs=avc1',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm'
+  ];
+  for (const c of candidates) {
+    if (MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return '';
+}
+
+downloadBtn.addEventListener('click', async () => {
+  const lines = reviewBox.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+  const count = Math.max(1, Math.min(200, parseInt(recordCountInput.value, 10) || 12));
+
+  const mimeType = pickMimeType();
+  if (!mimeType) {
+    alert('Your browser doesn\u2019t support in-browser video recording. Try Chrome, Firefox, or Safari.');
+    return;
+  }
+
+  screenReview.classList.add('hidden');
+  reviewStartOverLink.classList.add('hidden');
+  stageWrap.classList.remove('hidden');
+  canvas.classList.remove('hidden');
+  exitLink.classList.remove('hidden');
+  recBadge.classList.remove('hidden');
+  downloadReady.classList.add('hidden');
+  playbackToken++; // make sure no live loop is also running
+  state.mode = 'blank';
+  startRenderLoop();
+
+  const stream = canvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, { mimeType });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+
+  const stopped = new Promise(resolve => { recorder.onstop = resolve; });
+  recorder.start();
+
+  await runFixedCount(lines, count);
+
+  recorder.stop();
+  await stopped;
+
+  recBadge.classList.add('hidden');
+  stopRenderLoop();
+  canvas.classList.add('hidden');
+
+  const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+  const url = URL.createObjectURL(blob);
+  const ext = mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+
+  downloadReady.innerHTML = '';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'chat-animation.' + ext;
+  a.textContent = 'Download chat-animation.' + ext;
+  downloadReady.appendChild(a);
+  downloadReady.classList.remove('hidden');
+});
+</script>
+</body>
+</html>
