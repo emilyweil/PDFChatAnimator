@@ -418,6 +418,7 @@ function showScreen(name) {
   } else if (name === 'review') {
     screenReview.classList.remove('hidden');
     reviewHomeLink.classList.remove('hidden');
+    updateArchiveButtons();
   } else if (name === 'myarchive') {
     screenMyarchive.classList.remove('hidden');
     myArchiveHomeLink.classList.remove('hidden');
@@ -874,6 +875,16 @@ signOutLink.addEventListener('click', async () => {
   showScreen('home');
 });
 
+function updateArchiveButtons() {
+  if (currentUser && currentUsername) {
+    saveArchiveBtn.classList.remove('hidden');
+    signInToSaveBtn.classList.add('hidden');
+  } else {
+    saveArchiveBtn.classList.add('hidden');
+    signInToSaveBtn.classList.remove('hidden');
+  }
+}
+
 async function refreshAuthUI() {
   if (!sb) return;
   const { data } = await sb.auth.getSession();
@@ -898,24 +909,19 @@ async function refreshAuthUI() {
       signinLinkTop.classList.add('hidden');
       userMenuWrap.classList.remove('hidden');
       userMenuBtn.textContent = currentUsername;
-      saveArchiveBtn.classList.remove('hidden');
-      signInToSaveBtn.classList.add('hidden');
     } else {
       // signed in but no profile row and nothing pending to create one from —
       // treat this as not fully signed in rather than showing a broken state
       currentUsername = null;
       signinLinkTop.classList.remove('hidden');
       userMenuWrap.classList.add('hidden');
-      saveArchiveBtn.classList.add('hidden');
-      signInToSaveBtn.classList.remove('hidden');
     }
   } else {
     currentUsername = null;
     signinLinkTop.classList.remove('hidden');
     userMenuWrap.classList.add('hidden');
-    saveArchiveBtn.classList.add('hidden');
-    signInToSaveBtn.classList.remove('hidden');
   }
+  updateArchiveButtons();
 }
 
 signInToSaveBtn.addEventListener('click', () => {
@@ -1085,8 +1091,13 @@ saveArchiveBtn.addEventListener('click', async () => {
   saveArchiveBtn.disabled = false;
 
   if (error) { archiveStatus.textContent = 'Could not save: ' + error.message; return; }
+
+  saveArchiveBtn.classList.add('hidden');
+  signInToSaveBtn.classList.add('hidden');
   archiveStatus.innerHTML = '';
-  archiveStatus.appendChild(document.createTextNode('Saved to the public archive. '));
+  const savedMsg = document.createElement('strong');
+  savedMsg.textContent = 'Saved! ';
+  archiveStatus.appendChild(savedMsg);
   const viewLink = document.createElement('a');
   viewLink.textContent = 'View it on the homepage \u2192';
   viewLink.style.textDecoration = 'underline';
@@ -1105,7 +1116,6 @@ function restoreArchiveContent() {
   localStorage.removeItem('pendingArchiveSave');
   localStorage.removeItem('pendingReturnScreen');
   showScreen('review');
-  archiveStatus.textContent = 'Email confirmed! Your text is back — click "Save to archive" to finish.';
   return true;
 }
 
