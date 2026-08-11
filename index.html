@@ -227,7 +227,7 @@
 <!-- ============ top bar ============ -->
 <div id="topbar">
   <div class="right">
-    <a class="new-link" id="newLinkTop">+ New</a>
+    <a class="new-link" id="newLinkTop">Create chat animation</a>
     <a class="signin-link hidden" id="signinLinkTop">Sign in</a>
     <div class="hidden" id="userMenuWrap">
       <a id="userMenuBtn"></a>
@@ -243,16 +243,29 @@
 <div id="authOverlay">
   <div id="authBox" style="position:relative;">
     <span id="authClose">&times;</span>
-    <h2>Welcome</h2>
-    <div class="tabs">
-      <span id="tabSignin" class="active">Sign in</span>
-      <span id="tabSignup">Create account</span>
+
+    <div id="authFormWrap">
+      <h2>Welcome</h2>
+      <div class="tabs">
+        <span id="tabSignin" class="active">Sign in</span>
+        <span id="tabSignup">Create account</span>
+      </div>
+      <input type="text" id="authUsername" placeholder="Username" autocomplete="username">
+      <input type="email" id="authEmail" placeholder="Email" autocomplete="email">
+      <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+      <div id="authError"></div>
+      <button class="btn" id="authSubmit" style="width:100%; margin-right:0;">Sign in</button>
     </div>
-    <input type="text" id="authUsername" placeholder="Username" autocomplete="username">
-    <input type="email" id="authEmail" placeholder="Email" autocomplete="email">
-    <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
-    <div id="authError"></div>
-    <button class="btn" id="authSubmit" style="width:100%; margin-right:0;">Sign in</button>
+
+    <div id="authConfirmWrap" class="hidden">
+      <h2>Check your email</h2>
+      <p class="note" style="margin-top:10px; font-size:13px;">
+        We've sent a confirmation link to <strong id="authConfirmEmail"></strong>.
+        Click that link to activate your account — it'll bring you right back to this page with your text still filled in, ready to save to the archive.
+      </p>
+      <p class="note" style="font-size:13px;">Don't see it after a minute or two? Check your spam folder.</p>
+      <button class="btn secondary" id="authConfirmCloseBtn" style="width:100%; margin-right:0; margin-top:10px;">Got it</button>
+    </div>
   </div>
 </div>
 
@@ -314,7 +327,8 @@
     <label style="display:block; font-weight:600; color:#111; margin-bottom:6px;">Add this to the public archive</label>
     <p class="note" style="margin-top:0;">Anyone visiting the site will be able to read your description and watch this exchange animate. You'll need to be signed in.</p>
     <textarea id="archiveDescription" placeholder="Describe this exchange — who it's between, what it's about, why it matters…"></textarea>
-    <button class="btn" id="saveArchiveBtn">Save to archive</button>
+    <button class="btn hidden" id="saveArchiveBtn">Save to archive</button>
+    <button class="btn secondary hidden" id="signInToSaveBtn">Sign in to save to archive</button>
     <div class="note" id="archiveStatus"></div>
   </div>
 </div>
@@ -368,7 +382,7 @@ const fileInput = byId('fileInput'), statusEl = byId('status'), pasteBox = byId(
 const reviewHomeLink = byId('reviewHomeLink'), screenReview = byId('screen-review'), reviewBox = byId('reviewBox');
 const lineCountEl = byId('lineCount'), playBtn = byId('playBtn'), backBtn = byId('backBtn');
 const recordCountInput = byId('recordCount'), downloadBtn = byId('downloadBtn'), recordNote = byId('recordNote');
-const archiveDescription = byId('archiveDescription'), saveArchiveBtn = byId('saveArchiveBtn'), archiveStatus = byId('archiveStatus');
+const archiveDescription = byId('archiveDescription'), saveArchiveBtn = byId('saveArchiveBtn'), signInToSaveBtn = byId('signInToSaveBtn'), archiveStatus = byId('archiveStatus');
 const myArchiveHomeLink = byId('myArchiveHomeLink'), screenMyarchive = byId('screen-myarchive'), myArchiveList = byId('myArchiveList');
 const exitLink = byId('exitLink'), recBadge = byId('recBadge'), stageWrap = byId('stageWrap'), stageCanvas = byId('stageCanvas'), downloadReady = byId('downloadReady');
 
@@ -740,9 +754,17 @@ function openAuth(mode) {
   authEmail.value = '';
   authPassword.value = '';
   updateAuthTabs();
+  document.getElementById('authFormWrap').classList.remove('hidden');
+  document.getElementById('authConfirmWrap').classList.add('hidden');
   authOverlay.classList.add('open');
 }
 function closeAuth() { authOverlay.classList.remove('open'); }
+function showAuthConfirm(email) {
+  document.getElementById('authFormWrap').classList.add('hidden');
+  document.getElementById('authConfirmWrap').classList.remove('hidden');
+  document.getElementById('authConfirmEmail').textContent = email;
+}
+document.getElementById('authConfirmCloseBtn').addEventListener('click', closeAuth);
 function updateAuthTabs() {
   tabSignin.classList.toggle('active', authMode === 'signin');
   tabSignup.classList.toggle('active', authMode === 'signup');
@@ -792,10 +814,15 @@ authSubmit.addEventListener('click', async () => {
       // email confirmation is required before this account can sign in
       if (pendingArchiveIntent) savePendingArchive();
       pendingArchiveIntent = false;
-      closeAuth();
-      alert('Please confirm your email — check your inbox for a confirmation link. Clicking it will bring you back here to finish saving to the archive.');
+      showAuthConfirm(email);
       return;
     }
+
+    // confirmation isn't required — the account is already signed in. Refresh
+    // now (rather than waiting on the auth-state event) so the username is
+    // guaranteed to show up top-right immediately, not before the profile
+    // row above has finished being written.
+    await refreshAuthUI();
   } else {
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) { authError.textContent = error.message; return; }
@@ -826,12 +853,21 @@ async function refreshAuthUI() {
     signinLinkTop.classList.add('hidden');
     userMenuWrap.classList.remove('hidden');
     userMenuBtn.textContent = currentUsername;
+    saveArchiveBtn.classList.remove('hidden');
+    signInToSaveBtn.classList.add('hidden');
   } else {
     currentUsername = null;
     signinLinkTop.classList.remove('hidden');
     userMenuWrap.classList.add('hidden');
+    saveArchiveBtn.classList.add('hidden');
+    signInToSaveBtn.classList.remove('hidden');
   }
 }
+
+signInToSaveBtn.addEventListener('click', () => {
+  pendingArchiveIntent = true;
+  openAuth('signin');
+});
 
 if (sb) sb.auth.onAuthStateChange(() => { refreshAuthUI(); });
 
