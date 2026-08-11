@@ -272,7 +272,6 @@
       <h2>Check your email</h2>
       <p class="note" style="margin-top:10px; font-size:13px;">
         We've sent a confirmation link to <strong id="authConfirmEmail"></strong>.
-        Click that link to activate your account — it'll bring you right back to this page with your text still filled in, ready to save to the archive.
       </p>
       <p class="note" style="font-size:13px;">Don't see it after a minute or two? Check your spam folder.</p>
       <button class="btn secondary" id="authConfirmCloseBtn" style="width:100%; margin-right:0; margin-top:10px;">Got it</button>
@@ -364,7 +363,6 @@
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
- 
 
 let sb = null;
 const supabaseConfigured = SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1;
@@ -1088,13 +1086,9 @@ saveArchiveBtn.addEventListener('click', async () => {
 });
 
 // ---------- boot ----------
-async function checkPendingArchiveResume() {
-  if (!sb) return false;
+function restoreArchiveContent() {
   const pending = localStorage.getItem('pendingArchiveSave');
   if (!pending) return false;
-  const { data } = await sb.auth.getSession();
-  if (!data.session) return false;
-
   const saved = JSON.parse(pending);
   reviewBox.value = saved.messages || '';
   archiveDescription.value = saved.description || '';
@@ -1106,24 +1100,55 @@ async function checkPendingArchiveResume() {
   return true;
 }
 
-async function checkPendingReturnScreen() {
-  if (!sb) return false;
+function restoreReturnScreen() {
   const target = localStorage.getItem('pendingReturnScreen');
   if (!target) return false;
-  const { data } = await sb.auth.getSession();
-  if (!data.session) return false;
-
   localStorage.removeItem('pendingReturnScreen');
   showScreen(target);
   return true;
 }
 
-refreshAuthUI().then(async () => {
-  const resumedWithContent = await checkPendingArchiveResume();
-  if (resumedWithContent) return;
-  const resumedScreen = await checkPendingReturnScreen();
-  if (!resumedScreen) showScreen('home');
-});
+let resumeHandled = false;
+function finishResume(haveSession) {
+  if (resumeHandled) return;
+  resumeHandled = true;
+  if (haveSession) {
+    if (restoreArchiveContent()) return;
+    if (restoreReturnScreen()) return;
+  }
+  showScreen('home');
+}
+
+(async function boot() {
+  await refreshAuthUI();
+
+  const hasPending = !!(localStorage.getItem('pendingArchiveSave') || localStorage.getItem('pendingReturnScreen'));
+  if (!sb || !hasPending) {
+    finishResume(!!currentUser);
+    return;
+  }
+
+  // there's saved state waiting to be restored — this means we're likely
+  // returning from an email-confirmation link. That confirmation is
+  // processed asynchronously after the page loads, so rather than checking
+  // once and possibly losing the race, wait for it: either the session
+  // shows up right away, or the auth-state event fires once it's ready, or
+  // (if the link was invalid/expired) we give up after a few seconds.
+  const { data } = await sb.auth.getSession();
+  if (data.session) {
+    await refreshAuthUI();
+    finishResume(true);
+    return;
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session && !resumeHandled) {
+      await refreshAuthUI();
+      finishResume(true);
+    }
+  });
+  setTimeout(() => finishResume(false), 5000);
+})();
 </script>
 </body>
 </html>
