@@ -806,22 +806,26 @@ authSubmit.addEventListener('click', async () => {
     const redirectTo = window.location.origin + window.location.pathname;
     const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
     if (error) { authError.textContent = error.message; return; }
-    if (data.user) {
-      await sb.from('profiles').insert({ id: data.user.id, username });
-    }
 
     if (data.user && !data.session) {
-      // email confirmation is required before this account can sign in
+      // no active session yet (confirmation required), so we're not
+      // authenticated — creating the profile row now would be rejected by
+      // RLS. Stash the username and create it once there's a real session.
+      localStorage.setItem('pendingUsername', username);
       if (pendingArchiveIntent) savePendingArchive();
       pendingArchiveIntent = false;
       showAuthConfirm(email);
       return;
     }
 
+    if (data.user && data.session) {
+      const { error: profileErr } = await sb.from('profiles').insert({ id: data.user.id, username });
+      if (profileErr) { authError.textContent = 'Account created, but the profile couldn\u2019t be set up: ' + profileErr.message; return; }
+    }
+
     // confirmation isn't required — the account is already signed in. Refresh
     // now (rather than waiting on the auth-state event) so the username is
-    // guaranteed to show up top-right immediately, not before the profile
-    // row above has finished being written.
+    // guaranteed to show up top-right immediately.
     await refreshAuthUI();
   } else {
     const { error } = await sb.auth.signInWithPassword({ email, password });
@@ -848,8 +852,20 @@ async function refreshAuthUI() {
   currentUser = data.session ? data.session.user : null;
 
   if (currentUser) {
-    const { data: profile } = await sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle();
-    currentUsername = profile ? profile.username : '';
+    let { data: profile } = await sb.from('profiles').select('username').eq('id', currentUser.id).maybeSingle();
+
+    if (!profile) {
+      const pendingUsername = localStorage.getItem('pendingUsername');
+      if (pendingUsername) {
+        const { error: insertErr } = await sb.from('profiles').insert({ id: currentUser.id, username: pendingUsername });
+        if (!insertErr) {
+          profile = { username: pendingUsername };
+          localStorage.removeItem('pendingUsername');
+        }
+      }
+    }
+
+    currentUsername = profile ? profile.username : '(no profile)';
     signinLinkTop.classList.add('hidden');
     userMenuWrap.classList.remove('hidden');
     userMenuBtn.textContent = currentUsername;
@@ -995,7 +1011,13 @@ saveArchiveBtn.addEventListener('click', async () => {
   saveArchiveBtn.disabled = false;
 
   if (error) { archiveStatus.textContent = 'Could not save — try again.'; return; }
-  archiveStatus.textContent = 'Saved to the public archive.';
+  archiveStatus.innerHTML = '';
+  archiveStatus.appendChild(document.createTextNode('Saved to the public archive. '));
+  const viewLink = document.createElement('a');
+  viewLink.textContent = 'View it on the homepage \u2192';
+  viewLink.style.textDecoration = 'underline';
+  viewLink.addEventListener('click', () => showScreen('home'));
+  archiveStatus.appendChild(viewLink);
 });
 
 // ---------- boot ----------
