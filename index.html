@@ -336,7 +336,7 @@
 
   <div class="section-row">
     <label style="display:block; font-weight:600; color:#111; margin-bottom:6px;">Add this to the public archive</label>
-    <p class="note" style="margin-top:0;">Anyone visiting the site will be able to read your description and watch this exchange animate. You'll need to be signed in.</p>
+    <p class="note" style="margin-top:0;">Anyone visiting the site will be able to read your description and watch this exchange animate.</p>
     <textarea id="archiveDescription" placeholder="Describe this exchange — who it's between, what it's about, why it matters…"></textarea>
     <button class="btn hidden" id="saveArchiveBtn">Save to archive</button>
     <button class="btn secondary hidden" id="signInToSaveBtn">Sign in to save to archive</button>
@@ -360,11 +360,11 @@
 </div>
 
 <script>
-  // ================= CONFIG — fill these in with your Supabase project's values =================
+// ================= CONFIG — fill these in with your Supabase project's values =================
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
-
+ 
 
 let sb = null;
 const supabaseConfigured = SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1;
@@ -401,8 +401,10 @@ const exitLink = byId('exitLink'), recBadge = byId('recBadge'), stageWrap = byId
 // ---------- screen navigation ----------
 const allScreens = [screenHome, screenUpload, screenReview, screenMyarchive];
 const allTopLinks = [uploadHomeLink, reviewHomeLink, myArchiveHomeLink];
+let lastScreen = 'home';
 
 function showScreen(name) {
+  lastScreen = name;
   allScreens.forEach(s => s.classList.add('hidden'));
   allTopLinks.forEach(l => l.classList.add('hidden'));
   stageWrap.classList.remove('visible');
@@ -769,8 +771,14 @@ function openAuth(mode) {
   document.getElementById('authFormWrap').classList.remove('hidden');
   document.getElementById('authConfirmWrap').classList.add('hidden');
   authOverlay.classList.add('open');
+
+  // remember where to come back to after a possible email-confirmation redirect
+  localStorage.setItem('pendingReturnScreen', lastScreen);
+  if (lastScreen === 'review') savePendingArchive();
 }
-function closeAuth() { authOverlay.classList.remove('open'); }
+function closeAuth() {
+  authOverlay.classList.remove('open');
+}
 function showAuthConfirm(email) {
   document.getElementById('authFormWrap').classList.add('hidden');
   document.getElementById('authConfirmWrap').classList.remove('hidden');
@@ -844,6 +852,7 @@ authSubmit.addEventListener('click', async () => {
     if (error) { authError.textContent = error.message; return; }
   }
   pendingArchiveIntent = false;
+  localStorage.removeItem('pendingReturnScreen');
   closeAuth();
 });
 
@@ -976,7 +985,7 @@ async function loadMyArchive() {
   }
   const { data, error } = await sb.from('archives').select('id,description,messages,created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
   if (error) { myArchiveList.innerHTML = '<p class="sub">Could not load your archive.</p>'; return; }
-  if (!data || data.length === 0) { myArchiveList.innerHTML = '<p class="sub">You haven\u2019t archived anything yet.</p>'; return; }
+  if (!data || data.length === 0) { myArchiveList.innerHTML = '<p class="sub">You haven\u2019t saved any texts yet.</p>'; return; }
 
   data.forEach(entry => {
     const row = document.createElement('div');
@@ -1091,14 +1100,29 @@ async function checkPendingArchiveResume() {
   archiveDescription.value = saved.description || '';
   updateLineCount();
   localStorage.removeItem('pendingArchiveSave');
+  localStorage.removeItem('pendingReturnScreen');
   showScreen('review');
   archiveStatus.textContent = 'Email confirmed! Your text is back — click "Save to archive" to finish.';
   return true;
 }
 
+async function checkPendingReturnScreen() {
+  if (!sb) return false;
+  const target = localStorage.getItem('pendingReturnScreen');
+  if (!target) return false;
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return false;
+
+  localStorage.removeItem('pendingReturnScreen');
+  showScreen(target);
+  return true;
+}
+
 refreshAuthUI().then(async () => {
-  const resumed = await checkPendingArchiveResume();
-  if (!resumed) showScreen('home');
+  const resumedWithContent = await checkPendingArchiveResume();
+  if (resumedWithContent) return;
+  const resumedScreen = await checkPendingReturnScreen();
+  if (!resumedScreen) showScreen('home');
 });
 </script>
 </body>
