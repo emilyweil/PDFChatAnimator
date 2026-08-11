@@ -825,6 +825,15 @@ authSubmit.addEventListener('click', async () => {
     const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
     if (error) { authError.textContent = error.message; return; }
 
+    // Supabase deliberately doesn't return an error for a duplicate email —
+    // it returns a normal-looking user object with an empty identities array,
+    // to avoid letting an attacker probe which emails are registered. We
+    // check for that here so the person actually gets told what's going on.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      authError.textContent = 'An account with that email already exists — try signing in instead.';
+      return;
+    }
+
     if (data.user && !data.session) {
       // no active session yet (confirmation required), so we're not
       // authenticated — creating the profile row now would be rejected by
@@ -927,7 +936,7 @@ async function loadArchiveList() {
   if (!sb) { archiveList.innerHTML = '<div class="archive-empty">Supabase isn\u2019t configured yet.</div>'; return; }
   archiveList.innerHTML = '<div class="archive-empty">Loading…</div>';
   const { data, error } = await sb.from('archives').select('id,username,description,messages,created_at').order('created_at', { ascending: false });
-  if (error) { archiveList.innerHTML = '<div class="archive-empty">Could not load the archive.</div>'; return; }
+  if (error) { archiveList.innerHTML = '<div class="archive-empty">Could not load the archive: ' + error.message + '</div>'; return; }
   if (!data || data.length === 0) { archiveList.innerHTML = '<div class="archive-empty">Nothing archived yet — be the first.</div>'; return; }
 
   archiveList.innerHTML = '';
@@ -982,7 +991,7 @@ async function loadMyArchive() {
     return;
   }
   const { data, error } = await sb.from('archives').select('id,description,messages,created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  if (error) { myArchiveList.innerHTML = '<p class="sub">Could not load your archive.</p>'; return; }
+  if (error) { myArchiveList.innerHTML = '<p class="sub">Could not load your archive: ' + error.message + '</p>'; return; }
   if (!data || data.length === 0) { myArchiveList.innerHTML = '<p class="sub">You haven\u2019t saved any texts yet.</p>'; return; }
 
   data.forEach(entry => {
@@ -1075,7 +1084,7 @@ saveArchiveBtn.addEventListener('click', async () => {
   });
   saveArchiveBtn.disabled = false;
 
-  if (error) { archiveStatus.textContent = 'Could not save — try again.'; return; }
+  if (error) { archiveStatus.textContent = 'Could not save: ' + error.message; return; }
   archiveStatus.innerHTML = '';
   archiveStatus.appendChild(document.createTextNode('Saved to the public archive. '));
   const viewLink = document.createElement('a');
