@@ -187,15 +187,26 @@
 
   /* ---------- my archive screen ---------- */
   #screen-myarchive { display: none; }
-  .my-item {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    border-bottom: 1px solid #eee; padding: 14px 0; gap: 12px;
+  .my-item-edit {
+    border-bottom: 1px solid #eee; padding: 20px 0;
   }
-  .my-item .desc { font-size: 14px; line-height: 1.5; }
-  .my-item .meta { font-size: 12px; color: #999; margin-top: 3px; }
-  .my-item .delete-btn {
-    flex: 0 0 auto; background: none; border: 1px solid #ddd; color: #c0392b;
-    border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  .my-item-edit .meta { font-size: 12px; color: #999; margin-bottom: 10px; }
+  .my-item-edit .edit-label {
+    display: block; font-size: 12px; font-weight: 600; color: #555; margin: 10px 0 4px;
+  }
+  .my-item-edit .edit-desc {
+    width: 100%; box-sizing: border-box; height: 60px;
+    font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5;
+    padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; resize: vertical;
+  }
+  .my-item-edit .edit-messages {
+    width: 100%; box-sizing: border-box; height: 130px;
+    font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.5;
+    padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; resize: vertical;
+  }
+  .my-item-edit .delete-btn {
+    background: none; border: 1px solid #ddd; color: #c0392b;
+    border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer; margin-left: 8px;
   }
 
   /* ---------- full playback screen ---------- */
@@ -349,10 +360,11 @@
 </div>
 
 <script>
-// ================= CONFIG — fill these in with your Supabase project's values =================
+  // ================= CONFIG — fill these in with your Supabase project's values =================
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
+
 
 let sb = null;
 const supabaseConfigured = SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1;
@@ -865,12 +877,22 @@ async function refreshAuthUI() {
       }
     }
 
-    currentUsername = profile ? profile.username : '(no profile)';
-    signinLinkTop.classList.add('hidden');
-    userMenuWrap.classList.remove('hidden');
-    userMenuBtn.textContent = currentUsername;
-    saveArchiveBtn.classList.remove('hidden');
-    signInToSaveBtn.classList.add('hidden');
+    if (profile) {
+      currentUsername = profile.username;
+      signinLinkTop.classList.add('hidden');
+      userMenuWrap.classList.remove('hidden');
+      userMenuBtn.textContent = currentUsername;
+      saveArchiveBtn.classList.remove('hidden');
+      signInToSaveBtn.classList.add('hidden');
+    } else {
+      // signed in but no profile row and nothing pending to create one from —
+      // treat this as not fully signed in rather than showing a broken state
+      currentUsername = null;
+      signinLinkTop.classList.remove('hidden');
+      userMenuWrap.classList.add('hidden');
+      saveArchiveBtn.classList.add('hidden');
+      signInToSaveBtn.classList.remove('hidden');
+    }
   } else {
     currentUsername = null;
     signinLinkTop.classList.remove('hidden');
@@ -952,23 +974,51 @@ async function loadMyArchive() {
     myArchiveList.innerHTML = '<p class="sub">Sign in to see your archived texts.</p>';
     return;
   }
-  const { data, error } = await sb.from('archives').select('id,description,created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  const { data, error } = await sb.from('archives').select('id,description,messages,created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
   if (error) { myArchiveList.innerHTML = '<p class="sub">Could not load your archive.</p>'; return; }
   if (!data || data.length === 0) { myArchiveList.innerHTML = '<p class="sub">You haven\u2019t archived anything yet.</p>'; return; }
 
   data.forEach(entry => {
     const row = document.createElement('div');
-    row.className = 'my-item';
+    row.className = 'my-item-edit';
 
-    const left = document.createElement('div');
-    const desc = document.createElement('div');
-    desc.className = 'desc';
-    desc.textContent = entry.description;
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.textContent = new Date(entry.created_at).toLocaleDateString();
-    left.appendChild(desc);
-    left.appendChild(meta);
+    row.appendChild(meta);
+
+    const descLabel = document.createElement('label');
+    descLabel.className = 'edit-label';
+    descLabel.textContent = 'Description';
+    const descBox = document.createElement('textarea');
+    descBox.className = 'edit-desc';
+    descBox.value = entry.description;
+
+    const msgLabel = document.createElement('label');
+    msgLabel.className = 'edit-label';
+    msgLabel.textContent = 'Messages (one per line)';
+    const msgBox = document.createElement('textarea');
+    msgBox.className = 'edit-messages';
+    msgBox.value = (entry.messages || []).join('\n');
+
+    const statusEl2 = document.createElement('div');
+    statusEl2.className = 'note';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn secondary';
+    saveBtn.textContent = 'Save changes';
+    saveBtn.addEventListener('click', async () => {
+      const newDescription = descBox.value.trim();
+      const newMessages = msgBox.value.split('\n').map(l => l.trim()).filter(Boolean);
+      if (!newDescription) { statusEl2.textContent = 'Description can\u2019t be empty.'; return; }
+      if (newMessages.length === 0) { statusEl2.textContent = 'Needs at least one message.'; return; }
+      saveBtn.disabled = true;
+      const { error: updateErr } = await sb.from('archives')
+        .update({ description: newDescription, messages: newMessages })
+        .eq('id', entry.id);
+      saveBtn.disabled = false;
+      statusEl2.textContent = updateErr ? 'Could not save changes.' : 'Saved.';
+    });
 
     const delBtn = document.createElement('button');
     delBtn.className = 'delete-btn';
@@ -979,8 +1029,16 @@ async function loadMyArchive() {
       loadMyArchive();
     });
 
-    row.appendChild(left);
-    row.appendChild(delBtn);
+    const btnRow = document.createElement('div');
+    btnRow.appendChild(saveBtn);
+    btnRow.appendChild(delBtn);
+
+    row.appendChild(descLabel);
+    row.appendChild(descBox);
+    row.appendChild(msgLabel);
+    row.appendChild(msgBox);
+    row.appendChild(btnRow);
+    row.appendChild(statusEl2);
     myArchiveList.appendChild(row);
   });
 }
