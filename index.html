@@ -18,7 +18,7 @@
   #topbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding: 14px 22px;
     border-bottom: 1px solid #eee;
   }
@@ -226,7 +226,6 @@
 
 <!-- ============ top bar ============ -->
 <div id="topbar">
-  <a class="brand" id="brandLink">Chat Animator</a>
   <div class="right">
     <a class="new-link" id="newLinkTop">+ New</a>
     <a class="signin-link hidden" id="signinLinkTop">Sign in</a>
@@ -337,8 +336,8 @@
 
 <script>
 // ================= CONFIG — fill these in with your Supabase project's values =================
-const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 // ================================================================================================
 
 let sb = null;
@@ -357,7 +356,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 // ---------- element refs ----------
 function byId(id) { return document.getElementById(id); }
-const brandLink = byId('brandLink'), newLinkTop = byId('newLinkTop'), signinLinkTop = byId('signinLinkTop');
+const newLinkTop = byId('newLinkTop'), signinLinkTop = byId('signinLinkTop');
 const userMenuWrap = byId('userMenuWrap'), userMenuBtn = byId('userMenuBtn'), userDropdown = byId('userDropdown');
 const myArchiveLink = byId('myArchiveLink'), signOutLink = byId('signOutLink');
 const authOverlay = byId('authOverlay'), authClose = byId('authClose'), tabSignin = byId('tabSignin'), tabSignup = byId('tabSignup');
@@ -400,7 +399,6 @@ function showScreen(name) {
   }
 }
 
-brandLink.addEventListener('click', () => showScreen('home'));
 newLinkTop.addEventListener('click', () => { resetUploadScreen(); showScreen('upload'); });
 uploadHomeLink.addEventListener('click', () => showScreen('home'));
 reviewHomeLink.addEventListener('click', () => showScreen('home'));
