@@ -164,6 +164,26 @@
     cursor: pointer; color: #999; font-size: 18px;
   }
 
+  #helpOverlay {
+    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    align-items: center; justify-content: center; z-index: 50;
+  }
+  #helpOverlay.open { display: flex; }
+  #helpBox {
+    background: #fff; border-radius: 10px; padding: 28px 30px;
+    width: 480px; max-width: 88vw; max-height: 80vh; overflow-y: auto;
+  }
+  #helpBox h2 { font-size: 17px; margin: 0 0 14px; }
+  #helpBox h3 { font-size: 14px; margin: 20px 0 8px; }
+  #helpBox h3:first-of-type { margin-top: 4px; }
+  #helpBox ul { margin: 0; padding-left: 20px; }
+  #helpBox li { font-size: 13px; line-height: 1.6; color: #333; margin-bottom: 6px; }
+  #helpClose {
+    position: absolute; top: 14px; right: 16px;
+    cursor: pointer; color: #999; font-size: 18px;
+  }
+
   /* ---------- home screen ---------- */
   #screen-home { display: none; padding: 30px 26px; }
   .home-grid { display: flex; gap: 34px; max-width: 1180px; margin: 0 auto; align-items: flex-start; }
@@ -239,7 +259,7 @@
 <!-- ============ top bar ============ -->
 <div id="topbar">
   <div class="right">
-    <a class="new-link" id="newLinkTop">Create chat animation</a>
+    <a class="new-link" id="newLinkTop">Create text animation</a>
     <a class="signin-link hidden" id="signinLinkTop">Sign in</a>
     <div class="hidden" id="userMenuWrap">
       <a id="userMenuBtn"></a>
@@ -280,6 +300,39 @@
   </div>
 </div>
 
+<!-- ============ download-help modal ============ -->
+<div id="helpOverlay">
+  <div id="helpBox" style="position:relative;">
+    <span id="helpClose">&times;</span>
+    <h2>Ways to download your texts</h2>
+
+    <h3>Sync and Export via Mac (Best Free Option if You Own a Mac)</h3>
+    <ul>
+      <li>Enable message syncing by opening the Messages app on your iPhone, going to settings, and enabling iCloud sync for messages.</li>
+      <li>Open the Messages app on your Mac logged into the same Apple ID.</li>
+      <li>Select the conversation you want to download and let it fully load.</li>
+      <li>Click File &gt; Print from the top menu bar.</li>
+      <li>Click the PDF dropdown menu in the print dialogue and choose Save as PDF.</li>
+    </ul>
+
+    <h3>Forward Small Threads via Email (No Computer Needed)</h3>
+    <ul>
+      <li>Open the Messages app on your iPhone and go to the target conversation.</li>
+      <li>Touch and hold a message bubble, then tap More...</li>
+      <li>Tap the check circles to select the messages you wish to save.</li>
+      <li>Tap the share or forward arrow icon and enter your own email address to send it.</li>
+    </ul>
+
+    <h3>Use Third-Party Desktop Software (Best for Large History or Windows PCs)</h3>
+    <ul>
+      <li>Download and install a specialized manager like iMazing, Decipher TextMessage, or TouchCopy on your PC or Mac.</li>
+      <li>Connect your iPhone to your computer using a USB cable and tap Trust This Computer.</li>
+      <li>Open the software, navigate to the Messages tab, and select the threads or contacts you want to archive.</li>
+      <li>Export and save the files directly to your computer as a PDF, HTML, CSV, or text file.</li>
+    </ul>
+  </div>
+</div>
+
 <!-- ============ home screen ============ -->
 <div id="screen-home">
   <div class="home-grid">
@@ -301,7 +354,7 @@
 <a class="top-link hidden" id="uploadHomeLink">&larr; home</a>
 <div class="panel hidden" id="screen-upload">
   <h1>Create a new animation</h1>
-  <p class="sub">Upload a PDF export of a text-message conversation (like an iMessage export), or paste the chat text directly. Either way, you'll get a chance to review the extracted messages before playing them back, downloading a video, or adding it to the public archive.</p>
+  <p class="sub">Upload a PDF export of a text-message conversation or paste chat text directly. <a id="downloadHelpLink" style="text-decoration: underline; cursor: pointer;">There are various ways to download texts.</a> In the next step, you can review and edit the extracted messages.</p>
   <label class="dropzone" id="dropzone">
     <input type="file" id="fileInput" accept="application/pdf">
     <span id="dropzoneLabel">Click to choose a PDF, or drag one here</span>
@@ -364,7 +417,6 @@
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
-
 let sb = null;
 const supabaseConfigured = SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1;
 if (supabaseConfigured) {
@@ -390,6 +442,10 @@ const screenHome = byId('screen-home'), archiveList = byId('archiveList');
 const displayFrame = byId('displayFrame'), displayPlaceholder = byId('displayPlaceholder'), homeCanvas = byId('homeCanvas'), displayCaption = byId('displayCaption');
 const uploadHomeLink = byId('uploadHomeLink'), screenUpload = byId('screen-upload'), dropzone = byId('dropzone');
 const fileInput = byId('fileInput'), statusEl = byId('status'), pasteBox = byId('pasteBox'), pasteBtn = byId('pasteBtn');
+const downloadHelpLink = byId('downloadHelpLink'), helpOverlay = byId('helpOverlay'), helpClose = byId('helpClose');
+downloadHelpLink.addEventListener('click', () => helpOverlay.classList.add('open'));
+helpClose.addEventListener('click', () => helpOverlay.classList.remove('open'));
+helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) helpOverlay.classList.remove('open'); });
 const reviewHomeLink = byId('reviewHomeLink'), screenReview = byId('screen-review'), reviewBox = byId('reviewBox');
 const lineCountEl = byId('lineCount'), playBtn = byId('playBtn'), backBtn = byId('backBtn');
 const recordCountInput = byId('recordCount'), downloadBtn = byId('downloadBtn'), recordNote = byId('recordNote');
@@ -955,7 +1011,7 @@ async function loadArchiveList() {
 
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = '@' + entry.username + ' · ' + new Date(entry.created_at).toLocaleDateString();
+    meta.textContent = entry.username + ' · ' + new Date(entry.created_at).toLocaleDateString();
     item.appendChild(meta);
 
     const { short, truncated } = truncateDescription(entry.description, 140);
@@ -997,7 +1053,7 @@ async function loadArchiveList() {
 function playInHome(entry) {
   displayPlaceholder.classList.add('hidden');
   homeCanvas.classList.remove('hidden');
-  displayCaption.textContent = '@' + entry.username + ' — ' + entry.description;
+  displayCaption.textContent = entry.username + ' — ' + entry.description;
   homePlayer.stopLive();
   homePlayer.start();
   homePlayer.runLive(entry.messages);
