@@ -360,10 +360,11 @@
 </div>
 
 <script>
-// ================= CONFIG — fill these in with your Supabase project's values =============
+// ================= CONFIG — fill these in with your Supabase project's values =================
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
+
 let sb = null;
 const supabaseConfigured = SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1;
 if (supabaseConfigured) {
@@ -410,6 +411,7 @@ function showScreen(name) {
   screenHome.style.display = 'none';
 
   if (name === 'home') {
+    screenHome.classList.remove('hidden');
     screenHome.style.display = 'block';
     loadArchiveList();
   } else if (name === 'upload') {
@@ -1154,7 +1156,14 @@ function finishResume(haveSession) {
   await refreshAuthUI();
 
   const hasPending = !!(localStorage.getItem('pendingArchiveSave') || localStorage.getItem('pendingReturnScreen'));
-  if (!sb || !hasPending) {
+  const cameFromAuthRedirect = window.location.hash.includes('access_token') || window.location.search.includes('code=');
+
+  if (!sb || !hasPending || !cameFromAuthRedirect) {
+    // nothing genuinely pending — or pending flags are just stale leftovers
+    // from an earlier session that never finished. Either way, don't let
+    // them hijack a normal visit; clear them and go straight home.
+    localStorage.removeItem('pendingArchiveSave');
+    localStorage.removeItem('pendingReturnScreen');
     finishResume(!!currentUser);
     return;
   }
