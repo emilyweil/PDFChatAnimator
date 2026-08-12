@@ -170,10 +170,11 @@
   .archive-col { flex: 1 1 46%; min-width: 300px; }
   .archive-col h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: #666; margin: 0 0 14px; }
   .archive-item { border-bottom: 1px solid #eee; padding: 16px 0; }
-  .archive-item .meta { font-size: 12px; color: #999; margin-bottom: 4px; }
+  .archive-item .meta { font-size: 12px; color: #999; margin-bottom: 6px; }
+  .desc-row { display: flex; align-items: flex-start; gap: 8px; }
+  .desc-arrow { font-size: 10px; color: #999; margin-top: 4px; flex: 0 0 auto; user-select: none; }
   .archive-item .desc { font-size: 14px; line-height: 1.5; cursor: pointer; }
-  .archive-item .desc.expanded { }
-  .archive-item .watch-link { display: inline-block; margin-top: 8px; font-size: 13px; text-decoration: underline; }
+  .archive-item .desc:hover { text-decoration: underline; }
   .archive-empty { color: #999; font-size: 14px; }
 
   .display-col { flex: 1 1 54%; min-width: 320px; position: sticky; top: 24px; }
@@ -283,7 +284,7 @@
 <div id="screen-home">
   <div class="home-grid">
     <div class="archive-col">
-      <h2>Archive</h2>
+      <h2>Archived texts</h2>
       <div id="archiveList"><div class="archive-empty">Loading…</div></div>
     </div>
     <div class="display-col">
@@ -360,8 +361,8 @@
 
 <script>
 // ================= CONFIG — fill these in with your Supabase project's values =================
-const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 // ================================================================================================
 
 let sb = null;
@@ -896,7 +897,8 @@ async function refreshAuthUI() {
     if (!profile) {
       const pendingUsername = localStorage.getItem('pendingUsername');
       if (pendingUsername) {
-        const { error: insertErr } = await sb.from('profiles').insert({ id: currentUser.id, username: pendingUsername });
+        const { error: insertErr } = await sb.from('profiles')
+          .upsert({ id: currentUser.id, username: pendingUsername }, { onConflict: 'id', ignoreDuplicates: true });
         if (!insertErr) {
           profile = { username: pendingUsername };
           localStorage.removeItem('pendingUsername');
@@ -946,7 +948,7 @@ async function loadArchiveList() {
   if (!data || data.length === 0) { archiveList.innerHTML = '<div class="archive-empty">Nothing archived yet — be the first.</div>'; return; }
 
   archiveList.innerHTML = '';
-  data.forEach(entry => {
+  data.forEach((entry, idx) => {
     const item = document.createElement('div');
     item.className = 'archive-item';
 
@@ -956,27 +958,38 @@ async function loadArchiveList() {
     item.appendChild(meta);
 
     const { short, truncated } = truncateDescription(entry.description, 140);
-    const desc = document.createElement('div');
+    const descRow = document.createElement('div');
+    descRow.className = 'desc-row';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'desc-arrow';
+    arrow.textContent = truncated ? '\u25c0' : ''; // left arrow = abbreviated; blank if nothing to expand
+
+    const desc = document.createElement('span');
     desc.className = 'desc';
     desc.textContent = short;
-    item.appendChild(desc);
+    desc.title = 'Click to watch this animate';
 
+    let expanded = false;
     if (truncated) {
-      let expanded = false;
-      desc.addEventListener('click', () => {
+      arrow.style.cursor = 'pointer';
+      arrow.addEventListener('click', e => {
+        e.stopPropagation();
         expanded = !expanded;
         desc.textContent = expanded ? entry.description : short;
+        arrow.textContent = expanded ? '\u25bc' : '\u25c0'; // down arrow = expanded
       });
     }
 
-    const watchLink = document.createElement('a');
-    watchLink.className = 'watch-link';
-    watchLink.textContent = '\u25b6 watch it animate';
-    watchLink.addEventListener('click', () => playInHome(entry));
-    item.appendChild(document.createElement('br'));
-    item.appendChild(watchLink);
+    desc.addEventListener('click', () => playInHome(entry));
+
+    descRow.appendChild(arrow);
+    descRow.appendChild(desc);
+    item.appendChild(descRow);
 
     archiveList.appendChild(item);
+
+    if (idx === 0) playInHome(entry); // show the first one animating right away
   });
 }
 
@@ -1160,8 +1173,9 @@ function finishResume(haveSession) {
     return;
   }
 
-  sb.auth.onAuthStateChange(async (event, session) => {
+  const { data: sub } = sb.auth.onAuthStateChange(async (event, session) => {
     if (session && !resumeHandled) {
+      sub.subscription.unsubscribe();
       await refreshAuthUI();
       finishResume(true);
     }
