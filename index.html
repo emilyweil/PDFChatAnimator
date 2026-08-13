@@ -207,7 +207,6 @@
   .display-caption { margin-top: 10px; font-size: 13px; color: #666; }
 
   /* ---------- my archive screen ---------- */
-  #screen-myarchive { display: none; }
   .my-item-edit {
     border-bottom: 1px solid #eee; padding: 20px 0;
   }
@@ -423,6 +422,7 @@
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
+
 let sb = null;
 const supabaseConfigured = SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1;
 if (supabaseConfigured) {
