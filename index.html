@@ -264,7 +264,7 @@
     <div class="hidden" id="userMenuWrap">
       <a id="userMenuBtn"></a>
       <div id="userDropdown">
-        <a id="myArchiveLink">My archived texts</a>
+        <a id="myArchiveLink">Saved texts</a>
         <a id="signOutLink">Sign out</a>
       </div>
     </div>
@@ -370,7 +370,7 @@
 <!-- ============ review screen ============ -->
 <a class="top-link hidden" id="reviewHomeLink">&larr; home</a>
 <div class="panel hidden" id="screen-review">
-  <h1>Review the extracted messages</h1>
+  <h1>Review messages</h1>
   <p class="sub">One message per line. The extraction does its best to drop timestamps, "Delivered"/"Edited" labels, link previews, and reply counts — but PDFs vary, so skim through and delete or fix anything that slipped in before playing.</p>
   <textarea id="reviewBox"></textarea>
   <div class="count" id="lineCount"></div>
@@ -384,15 +384,21 @@
       messages
     </label>
     <button class="btn" id="downloadBtn">Download video</button>
+    <br>
+    <button class="btn secondary" id="downloadAllBtn" style="margin-top:8px;">Download the entire exchange as a video</button>
     <div class="note" id="recordNote"></div>
   </div>
 
   <div class="section-row">
-    <label style="display:block; font-weight:600; color:#111; margin-bottom:6px;">Add this to the public archive</label>
+    <label style="display:block; font-weight:600; color:#111; margin-bottom:6px;">Add this to the archive</label>
     <p class="note" style="margin-top:0;">Anyone visiting the site will be able to read your description and watch this exchange animate.</p>
     <textarea id="archiveDescription" placeholder="Describe this exchange — who it's between, what it's about, why it matters…"></textarea>
-    <button class="btn hidden" id="saveArchiveBtn">Save to archive</button>
-    <button class="btn secondary hidden" id="signInToSaveBtn">Save to archive</button>
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#444; margin-top:10px;">
+      <input type="checkbox" id="makePublicCheckbox" checked>
+      Make it public
+    </label>
+    <button class="btn hidden" id="saveArchiveBtn">Save</button>
+    <button class="btn secondary hidden" id="signInToSaveBtn">Save</button>
     <div class="note" id="archiveStatus"></div>
   </div>
 </div>
@@ -400,7 +406,7 @@
 <!-- ============ my archive screen ============ -->
 <a class="top-link hidden" id="myArchiveHomeLink">&larr; home</a>
 <div class="panel hidden" id="screen-myarchive">
-  <h1>My archived texts</h1>
+  <h1>Saved texts</h1>
   <div id="myArchiveList"></div>
 </div>
 
@@ -448,8 +454,8 @@ helpClose.addEventListener('click', () => helpOverlay.classList.remove('open'));
 helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) helpOverlay.classList.remove('open'); });
 const reviewHomeLink = byId('reviewHomeLink'), screenReview = byId('screen-review'), reviewBox = byId('reviewBox');
 const lineCountEl = byId('lineCount'), playBtn = byId('playBtn'), backBtn = byId('backBtn');
-const recordCountInput = byId('recordCount'), downloadBtn = byId('downloadBtn'), recordNote = byId('recordNote');
-const archiveDescription = byId('archiveDescription'), saveArchiveBtn = byId('saveArchiveBtn'), signInToSaveBtn = byId('signInToSaveBtn'), archiveStatus = byId('archiveStatus');
+const recordCountInput = byId('recordCount'), downloadBtn = byId('downloadBtn'), downloadAllBtn = byId('downloadAllBtn'), recordNote = byId('recordNote');
+const archiveDescription = byId('archiveDescription'), makePublicCheckbox = byId('makePublicCheckbox'), saveArchiveBtn = byId('saveArchiveBtn'), signInToSaveBtn = byId('signInToSaveBtn'), archiveStatus = byId('archiveStatus');
 const myArchiveHomeLink = byId('myArchiveHomeLink'), screenMyarchive = byId('screen-myarchive'), myArchiveList = byId('myArchiveList');
 const exitLink = byId('exitLink'), recBadge = byId('recBadge'), stageWrap = byId('stageWrap'), stageCanvas = byId('stageCanvas'), downloadReady = byId('downloadReady');
 
@@ -493,6 +499,7 @@ function resetUploadScreen() {
   statusEl.textContent = '';
   fileInput.value = '';
   pasteBox.value = '';
+  editingArchiveId = null;
 }
 
 // ---------- PDF text extraction ----------
@@ -763,11 +770,7 @@ function pickMimeType() {
   return '';
 }
 
-downloadBtn.addEventListener('click', async () => {
-  const lines = reviewBox.value.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length === 0) return;
-  const count = Math.max(1, Math.min(200, parseInt(recordCountInput.value, 10) || 12));
-
+async function recordVideo(lines, count) {
   const mimeType = pickMimeType();
   if (!mimeType) { alert('Your browser doesn\u2019t support in-browser video recording. Try Chrome, Firefox, or Safari.'); return; }
 
@@ -809,6 +812,19 @@ downloadBtn.addEventListener('click', async () => {
   a.textContent = 'Download chat-animation.' + ext;
   downloadReady.appendChild(a);
   downloadReady.classList.remove('hidden');
+}
+
+downloadBtn.addEventListener('click', async () => {
+  const lines = reviewBox.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+  const count = Math.max(1, Math.min(200, parseInt(recordCountInput.value, 10) || 12));
+  await recordVideo(lines, count);
+});
+
+downloadAllBtn.addEventListener('click', async () => {
+  const lines = reviewBox.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+  await recordVideo(lines, lines.length);
 });
 
 // ================= auth =================
@@ -817,6 +833,7 @@ let currentUser = null;
 let currentUsername = null;
 let authMode = 'signin';
 let pendingArchiveIntent = false; // true when the modal was opened from "Save to archive"
+let editingArchiveId = null; // set when editing an existing saved text via "Saved texts" instead of creating a new one
 
 function openAuth(mode) {
   authMode = mode || 'signin';
@@ -831,6 +848,7 @@ function openAuth(mode) {
 
   // remember where to come back to after a possible email-confirmation redirect
   localStorage.setItem('pendingReturnScreen', lastScreen);
+  localStorage.setItem('pendingSetAt', String(Date.now()));
   if (lastScreen === 'review') savePendingArchive();
 }
 function closeAuth() {
@@ -1000,7 +1018,7 @@ function truncateDescription(text, max) {
 async function loadArchiveList() {
   if (!sb) { archiveList.innerHTML = '<div class="archive-empty">Supabase isn\u2019t configured yet.</div>'; return; }
   archiveList.innerHTML = '<div class="archive-empty">Loading…</div>';
-  const { data, error } = await sb.from('archives').select('id,username,description,messages,created_at').order('created_at', { ascending: false });
+  const { data, error } = await sb.from('archives').select('id,username,description,messages,created_at').eq('is_public', true).order('created_at', { ascending: false });
   if (error) { archiveList.innerHTML = '<div class="archive-empty">Could not load the archive: ' + error.message + '</div>'; return; }
   if (!data || data.length === 0) { archiveList.innerHTML = '<div class="archive-empty">Nothing archived yet — be the first.</div>'; return; }
 
@@ -1020,7 +1038,7 @@ async function loadArchiveList() {
 
     const arrow = document.createElement('span');
     arrow.className = 'desc-arrow';
-    arrow.textContent = truncated ? '\u25c0' : ''; // left arrow = abbreviated; blank if nothing to expand
+    arrow.textContent = truncated ? '\u25b6' : ''; // right arrow = abbreviated; blank if nothing to expand
 
     const desc = document.createElement('span');
     desc.className = 'desc';
@@ -1034,7 +1052,7 @@ async function loadArchiveList() {
         e.stopPropagation();
         expanded = !expanded;
         desc.textContent = expanded ? entry.description : short;
-        arrow.textContent = expanded ? '\u25bc' : '\u25c0'; // down arrow = expanded
+        arrow.textContent = expanded ? '\u25bc' : '\u25b6'; // down arrow = expanded, right arrow = collapsed
       });
     }
 
@@ -1063,74 +1081,48 @@ async function loadMyArchive() {
   myArchiveList.innerHTML = '';
   if (!sb) { myArchiveList.innerHTML = '<p class="sub">Supabase isn\u2019t configured yet.</p>'; return; }
   if (!currentUser) {
-    myArchiveList.innerHTML = '<p class="sub">Sign in to see your archived texts.</p>';
+    myArchiveList.innerHTML = '<p class="sub">Sign in to see your saved texts.</p>';
     return;
   }
-  const { data, error } = await sb.from('archives').select('id,description,messages,created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-  if (error) { myArchiveList.innerHTML = '<p class="sub">Could not load your archive: ' + error.message + '</p>'; return; }
+  const { data, error } = await sb.from('archives').select('id,description,messages,is_public,created_at').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  if (error) { myArchiveList.innerHTML = '<p class="sub">Could not load your saved texts: ' + error.message + '</p>'; return; }
   if (!data || data.length === 0) { myArchiveList.innerHTML = '<p class="sub">You haven\u2019t saved any texts yet.</p>'; return; }
 
   data.forEach(entry => {
     const row = document.createElement('div');
-    row.className = 'my-item-edit';
+    row.className = 'archive-item';
 
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = new Date(entry.created_at).toLocaleDateString();
+    meta.textContent = new Date(entry.created_at).toLocaleDateString() + (entry.is_public ? '' : ' · private');
     row.appendChild(meta);
 
-    const descLabel = document.createElement('label');
-    descLabel.className = 'edit-label';
-    descLabel.textContent = 'Description';
-    const descBox = document.createElement('textarea');
-    descBox.className = 'edit-desc';
-    descBox.value = entry.description;
-
-    const msgLabel = document.createElement('label');
-    msgLabel.className = 'edit-label';
-    msgLabel.textContent = 'Messages (one per line)';
-    const msgBox = document.createElement('textarea');
-    msgBox.className = 'edit-messages';
-    msgBox.value = (entry.messages || []).join('\n');
-
-    const statusEl2 = document.createElement('div');
-    statusEl2.className = 'note';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'btn secondary';
-    saveBtn.textContent = 'Save changes';
-    saveBtn.addEventListener('click', async () => {
-      const newDescription = descBox.value.trim();
-      const newMessages = msgBox.value.split('\n').map(l => l.trim()).filter(Boolean);
-      if (!newDescription) { statusEl2.textContent = 'Description can\u2019t be empty.'; return; }
-      if (newMessages.length === 0) { statusEl2.textContent = 'Needs at least one message.'; return; }
-      saveBtn.disabled = true;
-      const { error: updateErr } = await sb.from('archives')
-        .update({ description: newDescription, messages: newMessages })
-        .eq('id', entry.id);
-      saveBtn.disabled = false;
-      statusEl2.textContent = updateErr ? 'Could not save changes.' : 'Saved.';
+    const desc = document.createElement('div');
+    desc.className = 'desc';
+    desc.textContent = entry.description;
+    desc.title = 'Click to open in Review messages';
+    desc.addEventListener('click', () => {
+      editingArchiveId = entry.id;
+      reviewBox.value = (entry.messages || []).join('\n');
+      archiveDescription.value = entry.description;
+      makePublicCheckbox.checked = entry.is_public !== false;
+      updateLineCount();
+      showScreen('review');
     });
+    row.appendChild(desc);
 
     const delBtn = document.createElement('button');
     delBtn.className = 'delete-btn';
     delBtn.textContent = 'Delete';
-    delBtn.addEventListener('click', async () => {
-      if (!confirm('Delete this from the archive? This can\u2019t be undone.')) return;
+    delBtn.style.marginTop = '8px';
+    delBtn.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('Delete this saved text? This can\u2019t be undone.')) return;
       await sb.from('archives').delete().eq('id', entry.id);
       loadMyArchive();
     });
+    row.appendChild(delBtn);
 
-    const btnRow = document.createElement('div');
-    btnRow.appendChild(saveBtn);
-    btnRow.appendChild(delBtn);
-
-    row.appendChild(descLabel);
-    row.appendChild(descBox);
-    row.appendChild(msgLabel);
-    row.appendChild(msgBox);
-    row.appendChild(btnRow);
-    row.appendChild(statusEl2);
     myArchiveList.appendChild(row);
   });
 }
@@ -1139,6 +1131,7 @@ saveArchiveBtn.addEventListener('click', async () => {
   if (!sb) { archiveStatus.textContent = 'Supabase isn\u2019t configured yet — see the SUPABASE_URL/SUPABASE_ANON_KEY comment near the top of the script.'; return; }
   const lines = reviewBox.value.split('\n').map(l => l.trim()).filter(Boolean);
   const description = archiveDescription.value.trim();
+  const isPublic = makePublicCheckbox.checked;
   archiveStatus.textContent = '';
 
   if (lines.length === 0) { archiveStatus.textContent = 'There\u2019s no message text to save.'; return; }
@@ -1147,17 +1140,25 @@ saveArchiveBtn.addEventListener('click', async () => {
   if (!currentUser) {
     pendingArchiveIntent = true;
     openAuth('signin');
-    archiveStatus.textContent = 'Sign in (or create an account), then click "Save to archive" again.';
+    archiveStatus.textContent = 'Sign in (or create an account), then click "Save" again.';
     return;
   }
 
   saveArchiveBtn.disabled = true;
-  const { error } = await sb.from('archives').insert({
-    user_id: currentUser.id,
-    username: currentUsername,
-    description,
-    messages: lines
-  });
+  let error;
+  if (editingArchiveId) {
+    ({ error } = await sb.from('archives')
+      .update({ description, messages: lines, is_public: isPublic })
+      .eq('id', editingArchiveId));
+  } else {
+    ({ error } = await sb.from('archives').insert({
+      user_id: currentUser.id,
+      username: currentUsername,
+      description,
+      messages: lines,
+      is_public: isPublic
+    }));
+  }
   saveArchiveBtn.disabled = false;
 
   if (error) { archiveStatus.textContent = 'Could not save: ' + error.message; return; }
@@ -1185,6 +1186,7 @@ function restoreArchiveContent() {
   updateLineCount();
   localStorage.removeItem('pendingArchiveSave');
   localStorage.removeItem('pendingReturnScreen');
+  localStorage.removeItem('pendingSetAt');
   showScreen('review');
   return true;
 }
@@ -1193,6 +1195,7 @@ function restoreReturnScreen() {
   const target = localStorage.getItem('pendingReturnScreen');
   if (!target) return false;
   localStorage.removeItem('pendingReturnScreen');
+  localStorage.removeItem('pendingSetAt');
   showScreen(target);
   return true;
 }
@@ -1212,14 +1215,17 @@ function finishResume(haveSession) {
   await refreshAuthUI();
 
   const hasPending = !!(localStorage.getItem('pendingArchiveSave') || localStorage.getItem('pendingReturnScreen'));
-  const cameFromAuthRedirect = window.location.hash.includes('access_token') || window.location.search.includes('code=');
+  const pendingAge = Date.now() - Number(localStorage.getItem('pendingSetAt') || 0);
+  const PENDING_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes — long enough to actually go check an inbox
+  const pendingIsFresh = hasPending && pendingAge < PENDING_MAX_AGE_MS;
 
-  if (!sb || !hasPending || !cameFromAuthRedirect) {
-    // nothing genuinely pending — or pending flags are just stale leftovers
-    // from an earlier session that never finished. Either way, don't let
-    // them hijack a normal visit; clear them and go straight home.
+  if (!sb || !pendingIsFresh) {
+    // nothing genuinely pending — or pending flags are stale leftovers from
+    // an earlier session that never finished. Either way, don't let them
+    // hijack a normal visit; clear them and go straight home.
     localStorage.removeItem('pendingArchiveSave');
     localStorage.removeItem('pendingReturnScreen');
+    localStorage.removeItem('pendingSetAt');
     finishResume(!!currentUser);
     return;
   }
