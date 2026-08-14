@@ -419,8 +419,8 @@
 
 <script>
 // ================= CONFIG — fill these in with your Supabase project's values =================
-const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 // ================================================================================================
 
 let sb = null;
@@ -500,6 +500,8 @@ function resetUploadScreen() {
   fileInput.value = '';
   pasteBox.value = '';
   editingArchiveId = null;
+  archiveDescription.value = '';
+  makePublicCheckbox.checked = true;
 }
 
 // ---------- PDF text extraction ----------
@@ -878,7 +880,8 @@ function sanitizeUsername(raw) {
 function savePendingArchive() {
   localStorage.setItem('pendingArchiveSave', JSON.stringify({
     messages: reviewBox.value,
-    description: archiveDescription.value
+    description: archiveDescription.value,
+    isPublic: makePublicCheckbox.checked
   }));
 }
 
@@ -1068,7 +1071,10 @@ async function loadArchiveList() {
   });
 }
 
+let homePlayingId = null;
 function playInHome(entry) {
+  if (homePlayingId === entry.id) return; // already playing this one — don't restart it
+  homePlayingId = entry.id;
   displayPlaceholder.classList.add('hidden');
   homeCanvas.classList.remove('hidden');
   displayCaption.textContent = entry.username + ' — ' + entry.description;
@@ -1183,6 +1189,7 @@ function restoreArchiveContent() {
   const saved = JSON.parse(pending);
   reviewBox.value = saved.messages || '';
   archiveDescription.value = saved.description || '';
+  makePublicCheckbox.checked = saved.isPublic !== false;
   updateLineCount();
   localStorage.removeItem('pendingArchiveSave');
   localStorage.removeItem('pendingReturnScreen');
