@@ -1175,10 +1175,16 @@ saveArchiveBtn.addEventListener('click', async () => {
   const savedMsg = document.createElement('strong');
   savedMsg.textContent = 'Saved! ';
   archiveStatus.appendChild(savedMsg);
+
   const viewLink = document.createElement('a');
-  viewLink.textContent = 'View it on the homepage \u2192';
   viewLink.style.textDecoration = 'underline';
-  viewLink.addEventListener('click', () => showScreen('home'));
+  if (isPublic) {
+    viewLink.textContent = 'View it on the homepage \u2192';
+    viewLink.addEventListener('click', () => showScreen('home'));
+  } else {
+    viewLink.textContent = 'View it in Saved texts \u2192';
+    viewLink.addEventListener('click', () => showScreen('myarchive'));
+  }
   archiveStatus.appendChild(viewLink);
 });
 
