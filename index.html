@@ -186,6 +186,9 @@
 
   /* ---------- home screen ---------- */
   #screen-home { display: none; padding: 30px 26px; }
+  .home-intro { max-width: 1180px; margin: 0 auto 30px; }
+  .home-intro h1 { font-size: 24px; margin: 0 0 6px; }
+  .home-intro p { font-size: 15px; color: #555; margin: 0; }
   .home-grid { display: flex; gap: 34px; max-width: 1180px; margin: 0 auto; align-items: flex-start; }
   .archive-col { flex: 1 1 46%; min-width: 300px; }
   .archive-col h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: #666; margin: 0 0 14px; }
@@ -334,6 +337,10 @@
 
 <!-- ============ home screen ============ -->
 <div id="screen-home">
+  <div class="home-intro">
+    <h1>Watch your texts come alive.</h1>
+    <p>Animate a conversation, then keep it for yourself or share it in the archive.</p>
+  </div>
   <div class="home-grid">
     <div class="archive-col">
       <h2>Archived texts</h2>
@@ -419,8 +426,8 @@
 
 <script>
 // ================= CONFIG — fill these in with your Supabase project's values =================
-const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 // ================================================================================================
 
 let sb = null;
