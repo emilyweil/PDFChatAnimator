@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chat Animator</title>
 <style>
   html, body {
@@ -278,6 +279,10 @@
     #helpBox li { font-size: 15px; }
     .display-caption { font-size: 15px; }
     .delete-btn { font-size: 14px; }
+
+    .home-grid { flex-direction: column; }
+    .archive-col, .display-col { min-width: 0; width: 100%; }
+    .display-col { position: static; }
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
