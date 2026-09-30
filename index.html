@@ -201,7 +201,7 @@
     display: inline-block; transition: transform 0.15s ease;
   }
   .desc-arrow.expanded { transform: rotate(90deg); }
-  .archive-item .desc { font-size: 14px; line-height: 1.5; cursor: pointer; }
+  .archive-item .desc { font-size: 17px; line-height: 1.5; cursor: pointer; }
   .archive-item .desc:hover { text-decoration: underline; }
   .archive-empty { color: #999; font-size: 14px; }
 
@@ -285,6 +285,8 @@
     .delete-btn { font-size: 14px; }
 
     .home-grid { flex-direction: column; }
+    .display-col { order: -1; }
+    .archive-col { order: 2; }
     .archive-col, .display-col { min-width: 0; width: 100%; }
     .display-col { position: static; }
     .display-frame { height: auto; aspect-ratio: 900 / 620; }
@@ -462,7 +464,7 @@
 </div>
 
 <script>
-// ================= CONFIG — fill these in with your Supabase project's values =================
+  // ================= CONFIG — fill these in with your Supabase project's values =================
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
@@ -699,7 +701,8 @@ function createPlayer(canvasEl) {
     } else if (state.mode === 'text') {
       const cx = W / 2, cy = H / 2;
       const maxWidth = W * 0.72;
-      const fontSize = W * 0.031;
+      const mobile = window.matchMedia('(max-width: 640px)').matches;
+      const fontSize = W * 0.031 * (mobile ? 1.5 : 1);
       const lineHeight = fontSize * 1.5;
       ctx.font = fontSize + 'px Arial, Helvetica, sans-serif';
       ctx.textAlign = 'center';
