@@ -252,6 +252,33 @@
   .download-link a { color: #111; font-weight: 600; text-decoration: underline; }
 
   .hidden { display: none !important; }
+
+  /* ---------- mobile: bump up small text for readability, desktop sizes untouched ---------- */
+  @media (max-width: 640px) {
+    .panel h1 { font-size: 26px; }
+    .panel p.sub { font-size: 16px; }
+    .status { font-size: 15px; }
+    #pasteBox { font-size: 16px; }
+    textarea#reviewBox { font-size: 16px; }
+    .btn { font-size: 16px; }
+    .count { font-size: 15px; }
+    .section-row label { font-size: 15px; }
+    .note { font-size: 14px; }
+    #archiveDescription { font-size: 16px; }
+    #authBox input { font-size: 16px; }
+    #authBox .tabs { font-size: 15px; }
+    .archive-col h2 { font-size: 17px; }
+    .archive-item .meta { font-size: 14px; }
+    .archive-item .desc { font-size: 17px; }
+    .desc-arrow { font-size: 12px; }
+    .new-link, .signin-link, #userMenuBtn, #userDropdown a { font-size: 15px; }
+    .home-intro h1 { font-size: 28px; }
+    .home-intro p { font-size: 17px; }
+    #helpBox h3 { font-size: 16px; }
+    #helpBox li { font-size: 15px; }
+    .display-caption { font-size: 15px; }
+    .delete-btn { font-size: 14px; }
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
@@ -425,7 +452,7 @@
 </div>
 
 <script>
-// ================= CONFIG — fill these in with your Supabase project's values =================
+  // ================= CONFIG — fill these in with your Supabase project's values =================
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
