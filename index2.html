@@ -398,6 +398,7 @@
 </div>
 
 <!-- ============ upload screen ============ -->
+<a class="top-link hidden" id="uploadHomeLink">&larr; home</a>
 <div class="panel hidden" id="screen-upload">
   <h1>Create a new animation</h1>
   <p class="sub">Upload a PDF export of a text-message conversation or paste chat text directly. <a id="downloadHelpLink" style="text-decoration: underline; cursor: pointer;">There are various ways to download texts.</a> In the next step, you can review and edit the extracted messages.</p>
@@ -464,10 +465,12 @@
 </div>
 
 <script>
-// ================= CONFIG — fill these in with your Supabase project's values =================
+  
+  // ================= CONFIG — fill these in with your Supabase project's values =================
 const SUPABASE_URL = 'https://gcyfffmwhzizluzxykia.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjeWZmZm13aHppemx1enh5a2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNzczMTUsImV4cCI6MjEwMTk1MzMxNX0.5G8_yTk7FSl_21i-k6Qv_4cGsuF9r4N3XQDHU_Y2ukc';
 // ================================================================================================
+
 
 let sb = null;
 const supabaseConfigured = SUPABASE_URL.indexOf('YOUR_SUPABASE') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') === -1;
@@ -493,7 +496,7 @@ const authOverlay = byId('authOverlay'), authClose = byId('authClose'), tabSigni
 const authUsername = byId('authUsername'), authEmail = byId('authEmail'), authPassword = byId('authPassword'), authError = byId('authError'), authSubmit = byId('authSubmit');
 const screenHome = byId('screen-home'), archiveList = byId('archiveList');
 const displayFrame = byId('displayFrame'), displayPlaceholder = byId('displayPlaceholder'), homeCanvas = byId('homeCanvas'), displayCaption = byId('displayCaption');
-const screenUpload = byId('screen-upload'), dropzone = byId('dropzone');
+const uploadHomeLink = byId('uploadHomeLink'), screenUpload = byId('screen-upload'), dropzone = byId('dropzone');
 const fileInput = byId('fileInput'), statusEl = byId('status'), pasteBox = byId('pasteBox'), pasteBtn = byId('pasteBtn');
 const downloadHelpLink = byId('downloadHelpLink'), helpOverlay = byId('helpOverlay'), helpClose = byId('helpClose');
 downloadHelpLink.addEventListener('click', () => helpOverlay.classList.add('open'));
@@ -508,7 +511,7 @@ const exitLink = byId('exitLink'), recBadge = byId('recBadge'), stageWrap = byId
 
 // ---------- screen navigation ----------
 const allScreens = [screenHome, screenUpload, screenReview, screenMyarchive];
-const allTopLinks = [myArchiveHomeLink];
+const allTopLinks = [uploadHomeLink, myArchiveHomeLink];
 let lastScreen = 'home';
 
 function showScreen(name) {
@@ -525,6 +528,7 @@ function showScreen(name) {
     loadArchiveList();
   } else if (name === 'upload') {
     screenUpload.classList.remove('hidden');
+    uploadHomeLink.classList.remove('hidden');
   } else if (name === 'review') {
     screenReview.classList.remove('hidden');
     updateArchiveButtons();
@@ -536,6 +540,7 @@ function showScreen(name) {
 }
 
 newLinkTop.addEventListener('click', () => { resetUploadScreen(); showScreen('upload'); });
+uploadHomeLink.addEventListener('click', () => showScreen('home'));
 myArchiveHomeLink.addEventListener('click', () => showScreen('home'));
 
 function resetUploadScreen() {
